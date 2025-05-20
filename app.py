@@ -17,11 +17,11 @@ MAX_MATCH_POINTS = 100
 
 st.title("🏃 GPX-Map Generator")
 
-# Formularfelder
+# Formular
 gpx_file = st.file_uploader("GPX-Datei hochladen", type="gpx")
-runner = st.text_input("Dein Name")
-event = st.text_input("Name des Laufs")
-duration = st.text_input("Zeit (HH:MM:SS)")
+runner    = st.text_input("Dein Name")
+event     = st.text_input("Name des Laufs")
+duration  = st.text_input("Zeit (HH:MM:SS)")
 
 if st.button("Karte generieren") and gpx_file and runner and event and duration:
     # 1) GPX parsen
@@ -29,8 +29,8 @@ if st.button("Karte generieren") and gpx_file and runner and event and duration:
     pts = [
         (pt.longitude, pt.latitude)
         for track in gpx.tracks
-        for seg in track.segments
-        for pt in seg.points
+        for seg   in track.segments
+        for pt    in seg.points
     ]
 
     # 2) Sampling auf MAX_MATCH_POINTS
@@ -38,19 +38,18 @@ if st.button("Karte generieren") and gpx_file and runner and event and duration:
         step = len(pts) // MAX_MATCH_POINTS + 1
         pts = pts[::step]
 
-    # 3) Map-Matching
+    # 3) Map-Matching versuchen
     coord_str = ";".join(f"{lon},{lat}" for lon, lat in pts)
     try:
         res = requests.get(OSRM_URL.format(coords=coord_str))
         res.raise_for_status()
         matched = res.json()["matchings"][0]["geometry"]["coordinates"]
     except Exception:
-        st.warning("⚠️ Map-Matching fehlgeschlagen – verwende Roh-Daten.")
+        st.warning("⚠️ Map-Matching fehlgeschlagen – verwende Roh-GPX-Daten.")
         matched = pts
 
     # 4) Karte rendern
     m = StaticMap(800, 1200)
-    # HIER: Farbe explizit angeben!
     m.add_line(Line(matched, color="black", width=2))
     img = m.render()
 
@@ -60,11 +59,16 @@ if st.button("Karte generieren") and gpx_file and runner and event and duration:
     draw = ImageDraw.Draw(canvas)
     font = ImageFont.load_default()
     for i, text in enumerate([event, runner, duration]):
-        w, h = draw.textsize(text, font=font)
+        w, h = font.getsize(text)
         y = img.height + 5 + 25 * i
-        draw.text(((canvas.width - w) / 2, y), text, fill="black", font=font)
+        draw.text(
+            ((canvas.width - w) / 2, y),
+            text,
+            fill="black",
+            font=font
+        )
 
-    # 6) Bild anzeigen & Download
+    # 6) Bild anzeigen & Download anbieten
     bio = io.BytesIO()
     canvas.save(bio, format="PNG")
     st.image(canvas, use_column_width=True)
