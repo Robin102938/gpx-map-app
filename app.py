@@ -121,13 +121,28 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     if len(pts) > MAX_PTS_DISPLAY:
         step = len(pts) // MAX_PTS_DISPLAY + 1
         pts = pts[::step]
-    # Karte rendern
-    m = StaticMap(MAP_W, MAP_H, url_template=TILE)
-    m.add_line(Line(pts, color=route_shadow_color, width=18))
-    m.add_line(Line(pts, color=route_color, width=10))
-    m.add_marker(CircleMarker(pts[0], start_color, 30))
-    m.add_marker(CircleMarker(pts[-1], end_color, 30))
-    map_img = m.render(zoom=14)
+        # Karte rendern (Conditional auf Custom-Stil)
+    if TILE:
+        m = StaticMap(MAP_W, MAP_H, url_template=TILE)
+        m.add_line(Line(pts, color=route_shadow_color, width=16))  # leicht dünnerer Schatten
+        m.add_line(Line(pts, color=route_color, width=8))         # Linienbreite verringert
+        m.add_marker(CircleMarker(pts[0], start_color, 30))
+        m.add_marker(CircleMarker(pts[-1], end_color, 30))
+        map_img = m.render(zoom=14)
+    else:
+        # Custom-Stil: einfarbiger Hintergrund
+        map_img = Image.new("RGB", (MAP_W, MAP_H), custom_map_color)
+        draw_bg = ImageDraw.Draw(map_img)
+        # Route zeichnen
+        draw_bg.line(pts, fill=route_shadow_color, width=16)
+        draw_bg.line(pts, fill=route_color, width=8)
+        # Start/Ziel Marker
+        r = 15
+        # Umwandlung von Koordinaten in Pixel Skizze: hier simple Projektion (falls nötig)
+        for idx, point in enumerate([pts[0], pts[-1]]):
+            x, y = point
+            color = start_color if idx == 0 else end_color
+            draw_bg.ellipse([x-r, y-r, x+r, y+r], fill=color)
     st.image(map_img, use_container_width=True)
     # Footer settings
     # Dynamische Schriftgröße für Event-Name
