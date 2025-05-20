@@ -54,7 +54,12 @@ footer_meta_color  = choose_color_grid("Footer Metatext", "#555555")
 st.sidebar.header("🗺 Kartenstil")
 map_style = st.sidebar.selectbox(
     "Kartenstil auswählen",
-    ["CartoDB Positron (Light)", "CartoDB Dark Matter", "OpenStreetMap Standard", "Stamen Toner Lite", "Custom"]
+    [
+        "CartoDB Positron (Light)",
+        "CartoDB Dark Matter",
+        "OpenStreetMap Standard",
+        "Custom"
+    ]
 )
 if map_style == "CartoDB Positron (Light)":
     TILE = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -62,13 +67,9 @@ elif map_style == "CartoDB Dark Matter":
     TILE = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
 elif map_style == "OpenStreetMap Standard":
     TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-elif map_style == "Stamen Toner Lite":
-    TILE = "https://stamen-tiles.a.ssl.fastly.net/toner-lite/{z}/{x}/{y}.png"
-else:
-    custom_tile = st.sidebar.text_input(
-        "Custom Tile URL Template", "https://.../{z}/{x}/{y}.png"
-    )
-    TILE = custom_tile
+elif map_style == "Custom":
+    TILE = None  # use solid background
+    custom_map_color = st.sidebar.color_picker("Kartenfarbe", "#e0e0e0")
 
 # ——— Eingaben ———
 gpx_file    = st.file_uploader("GPX-Datei (.gpx) hochladen", type="gpx")
