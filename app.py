@@ -5,18 +5,17 @@ from staticmap import StaticMap, Line, CircleMarker
 from PIL import Image, ImageDraw, ImageFont
 
 # ——— Konfiguration ———
-MAX_SPEED_M_S    = 10      # >36 km/h filtern
-MIN_DT_S         = 1       # mind. 1 s
-MAX_PTS_DISPLAY  = 2000    # Sampling-Limit
-MAP_W, MAP_H     = 2480, 3508  # A4 @300dpi
-FOOTER_H         = 350     # Erhöht für mehr Abstand
+MAX_SPEED_M_S = 10 # >36 km/h filtern
+MIN_DT_S = 1 # mind. 1 s
+MAX_PTS_DISPLAY = 2000 # Sampling-Limit
+MAP_W, MAP_H = 2480, 3508 # A4 @300dpi
 
 st.title("🏃‍ GPX-Map Generator – Print-Ready")
 
 # ——— Eingaben ———
-gpx_file    = st.file_uploader("GPX-Datei (.gpx) hochladen", type="gpx")
-event_name  = st.text_input("Name des Laufs / Events")
-run_date    = st.date_input("Datum des Laufs")
+gpx_file = st.file_uploader("GPX-Datei (.gpx) hochladen", type="gpx")
+event_name = st.text_input("Name des Laufs / Events")
+run_date = st.date_input("Datum des Laufs")
 distance_opt = st.selectbox(
     "Distanz auswählen",
     ["5 km", "10 km", "21,0975 km", "42,195 km", "Andere…"]
@@ -27,10 +26,10 @@ if distance_opt == "Andere…":
 else:
     distance = distance_opt
 
-city        = st.text_input("Stadt")
-bib_no      = st.text_input("Startnummer (ohne #)")
-runner      = st.text_input("Dein Name")
-duration    = st.text_input("Zeit (HH:MM:SS)")
+city = st.text_input("Stadt")
+bib_no = st.text_input("Startnummer (ohne #)")
+runner = st.text_input("Dein Name")
+duration = st.text_input("Zeit (HH:MM:SS)")
 
 # ——— Poster-Generierung ———
 if st.button("Poster erzeugen") and gpx_file and event_name and runner and duration:
@@ -55,7 +54,7 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     clean = [raw[0]]
     for p,c in zip(raw, raw[1:]):
         dist = hav(p, c)
-        dt   = (c[3] - p[3]).total_seconds()
+        dt = (c[3] - p[3]).total_seconds()
         if dt < MIN_DT_S or dist/dt > MAX_SPEED_M_S:
             continue
         clean.append(c)
@@ -69,14 +68,13 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
         step = len(pts) // MAX_PTS_DISPLAY + 1
         pts = pts[::step]
 
-    # 4) Karte rendern (CartoDB Positron Light-Tiles)
+    # 4) Karte rendern (Light Basemap)
     TILE = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
     m = StaticMap(MAP_W, MAP_H, url_template=TILE)
-    m.add_line(Line(pts, color="#CCCCCC", width=18))  # feiner Schatten
-    m.add_line(Line(pts, color="#000000", width=10))  # dünnere Hauptlinie
-    m.add_marker(CircleMarker(pts[0], "#00b300", 30))   # Startpunkt
-    m.add_marker(CircleMarker(pts[-1], "#e60000", 30))  # Zielpunkt
-
+    m.add_line(Line(pts, color="#CCCCCC", width=18)) # Schatten
+    m.add_line(Line(pts, color="#000000", width=10)) # Hauptlinie dünner
+    m.add_marker(CircleMarker(pts[0], "#00b300", 30)) # Start
+    m.add_marker(CircleMarker(pts[-1], "#e60000", 30)) # Ziel
     try:
         map_img = m.render(zoom=None)
     except:
@@ -86,37 +84,47 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
 
     st.image(map_img, use_container_width=True)
 
-    # 5) Poster-Canvas
-    poster = Image.new("RGB", (MAP_W, MAP_H + FOOTER_H), "white")
-    poster.paste(map_img, (0, 0))
-    draw = ImageDraw.Draw(poster)
+    # 5) Footer-Text dynamisch platzieren
+    # Berechne benötigte Footer-Höhe basierend auf Textgrößen
     try:
-        f_big   = ImageFont.truetype("DejaVuSans-Bold.ttf", 140)
+        f_big = ImageFont.truetype("DejaVuSans-Bold.ttf", 140)
         f_small = ImageFont.truetype("DejaVuSans.ttf", 80)
     except:
         f_big = f_small = ImageFont.load_default()
 
-    # Footer-Layout
-    y0 = MAP_H + 30
-    draw.line((200, y0, MAP_W-200, y0), fill="#cccccc", width=3)
-    y0 += 20
-
-    # Event-Name\   
+    # Texte
     ev = event_name.upper()
-    w,h = draw.textbbox((0,0), ev, font=f_big)[2:]
-    draw.text(((MAP_W-w)/2, y0), ev, fill="black", font=f_big)
-    y0 += h + 10
-
-    # Datum – Distanz – Stadt
     info = f"{run_date.strftime('%d %B %Y')} – {distance} – {city}"
-    w2,h2 = draw.textbbox((0,0), info, font=f_small)[2:]
-    draw.text(((MAP_W-w2)/2, y0), info, fill="black", font=f_small)
-    y0 += h2 + 10
-
-    # Bib – Runner – Zeit
     bib = f"#{bib_no.strip()} {runner} – {duration}"
-    w3,h3 = draw.textbbox((0,0), bib, font=f_small)[2:]
-    draw.text(((MAP_W-w3)/2, y0), bib, fill="black", font=f_small)
+    # Maße
+    bbox_ev = ImageDraw.Draw(Image.new('RGB',(1,1))).textbbox((0,0), ev, font=f_big)
+    bbox_info = ImageDraw.Draw(Image.new('RGB',(1,1))).textbbox((0,0), info, font=f_small)
+    bbox_bib = ImageDraw.Draw(Image.new('RGB',(1,1))).textbbox((0,0), bib, font=f_small)
+    h_total = (bbox_ev[3]-bbox_ev[1]) + (bbox_info[3]-bbox_info[1]) + (bbox_bib[3]-bbox_bib[1]) + 80
+
+    # Neues Canvas
+    poster = Image.new("RGB", (MAP_W, MAP_H + h_total), "white")
+    poster.paste(map_img, (0, 0))
+    draw = ImageDraw.Draw(poster)
+
+    # Separator-Linie
+    y = MAP_H + 20
+    draw.line((200, y, MAP_W-200, y), fill="#cccccc", width=3)
+    y += 30
+
+    # Event
+    w,h = bbox_ev[2]-bbox_ev[0], bbox_ev[3]-bbox_ev[1]
+    draw.text(((MAP_W-w)/2, y), ev, fill="black", font=f_big)
+    y += h + 20
+
+    # Info
+    w2,h2 = bbox_info[2]-bbox_info[0], bbox_info[3]-bbox_info[1]
+    draw.text(((MAP_W-w2)/2, y), info, fill="black", font=f_small)
+    y += h2 + 15
+
+    # Bib
+    w3,h3 = bbox_bib[2]-bbox_bib[0], bbox_bib[3]-bbox_bib[1]
+    draw.text(((MAP_W-w3)/2, y), bib, fill="black", font=f_small)
 
     # 6) Download
     buf = io.BytesIO()
