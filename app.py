@@ -108,7 +108,7 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     # Karte rendern
     m = StaticMap(MAP_W, MAP_H, url_template=TILE)
     m.add_line(Line(pts, color=route_shadow_color, width=14))  # dünnerer Schatten
-    m.add_line(Line(pts, color=route_color, width=6))         # dünnere Hauptlinie
+    m.add_line(Line(pts, color=route_color, width=8))         # dünnere Hauptlinie
     m.add_marker(CircleMarker(pts[0], start_color, 30))
     m.add_marker(CircleMarker(pts[-1], end_color, 30))
     map_img = m.render(zoom=14)
