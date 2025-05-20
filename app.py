@@ -19,29 +19,22 @@ st.title("🏃‍ GPX-Map Generator – Print-Ready")
 
 # ——— Farbauswahl (Sidebar) ———
 st.sidebar.header("🎨 Farb-Settings")
-# Preset-Farben als Farbswatches
 color_swatches = {
-    "⬛": "#000000",
-    "⬜": "#FFFFFF",
-    "🟩": "#00FF00",
-    "🟥": "#FF0000",
-    "🟦": "#0000FF",
-    "🟨": "#FFFF00",
-    "🟪": "#FF00FF",
-    "🟧": "#FFA500"
+    "⬛": "#000000", "⬜": "#FFFFFF",
+    "🟩": "#00FF00", "🟥": "#FF0000",
+    "🟦": "#0000FF", "🟨": "#FFFF00",
+    "🟪": "#FF00FF", "🟧": "#FFA500"
 }
-
 def choose_color_grid(label, default_hex):
     st.sidebar.text(label)
-    options = list(color_swatches.keys()) + ["❓"]
-    # default index
+    options = list(color_swatches.keys())
+    options.append("❓")
     default_key = next((k for k,v in color_swatches.items() if v==default_hex), "⬛")
     idx = options.index(default_key) if default_key in options else 0
     choice = st.sidebar.radio("", options, index=idx, key=f"radio_{label}")
     if choice == "❓":
         return st.sidebar.color_picker(f"Custom {label}", default_hex)
     return color_swatches[choice]
-
 route_color        = choose_color_grid("Streckenfarbe", "#000000")
 route_shadow_color = choose_color_grid("Schattenfarbe der Strecke", "#CCCCCC")
 start_color        = choose_color_grid("Startpunkt-Farbe", "#00b300")
@@ -50,26 +43,18 @@ footer_bg_color    = choose_color_grid("Footer Hintergrund", "#FFFFFF")
 footer_text_color  = choose_color_grid("Footer Haupttext", "#000000")
 footer_meta_color  = choose_color_grid("Footer Metatext", "#555555")
 
-# ——— Kartenstil (Sidebar) ——— (Sidebar) ——— (Sidebar) ———
+# ——— Kartenstil (Sidebar) ———
 st.sidebar.header("🗺 Kartenstil")
 map_style = st.sidebar.selectbox(
     "Kartenstil auswählen",
-    [
-        "CartoDB Positron (Light)",
-        "CartoDB Dark Matter",
-        "OpenStreetMap Standard",
-        "Custom"
-    ]
+    ["CartoDB Positron (Light)", "CartoDB Dark Matter", "OpenStreetMap Standard"]
 )
 if map_style == "CartoDB Positron (Light)":
     TILE = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
 elif map_style == "CartoDB Dark Matter":
     TILE = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-elif map_style == "OpenStreetMap Standard":
+else:
     TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-elif map_style == "Custom":
-    TILE = None  # use solid background
-    custom_map_color = st.sidebar.color_picker("Kartenfarbe", "#e0e0e0")
 
 # ——— Eingaben ———
 gpx_file    = st.file_uploader("GPX-Datei (.gpx) hochladen", type="gpx")
@@ -84,7 +69,6 @@ if distance_opt == "Andere…":
     distance = custom_dist.strip() or distance_opt
 else:
     distance = distance_opt
-
 city     = st.text_input("Stadt")
 bib_no   = st.text_input("Startnummer (ohne #)")
 runner   = st.text_input("Dein Name")
@@ -102,10 +86,10 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
         st.stop()
     # Ausreißer filtern
     def hav(a, b):
-        lon1, lat1, lon2, lat2 = map(math.radians, (a[0],a[1],b[0],b[1]))
+        lon1,lat1,lon2,lat2 = map(math.radians, (a[0],a[1],b[0],b[1]))
         dlon, dlat = lon2-lon1, lat2-lat1
         h = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
-        return 2 * 6371000 * math.asin(math.sqrt(h))
+        return 2*6371000*math.asin(math.sqrt(h))
     clean = [raw[0]]
     for prev, curr in zip(raw, raw[1:]):
         dist = hav(prev, curr)
@@ -121,38 +105,21 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     if len(pts) > MAX_PTS_DISPLAY:
         step = len(pts) // MAX_PTS_DISPLAY + 1
         pts = pts[::step]
-        # Karte rendern (Conditional auf Custom-Stil)
-    if TILE:
-        m = StaticMap(MAP_W, MAP_H, url_template=TILE)
-        m.add_line(Line(pts, color=route_shadow_color, width=16))  # leicht dünnerer Schatten
-        m.add_line(Line(pts, color=route_color, width=8))         # Linienbreite verringert
-        m.add_marker(CircleMarker(pts[0], start_color, 30))
-        m.add_marker(CircleMarker(pts[-1], end_color, 30))
-        map_img = m.render(zoom=14)
-    else:
-        # Custom-Stil: einfarbiger Hintergrund
-        map_img = Image.new("RGB", (MAP_W, MAP_H), custom_map_color)
-        draw_bg = ImageDraw.Draw(map_img)
-        # Route zeichnen
-        draw_bg.line(pts, fill=route_shadow_color, width=16)
-        draw_bg.line(pts, fill=route_color, width=8)
-        # Start/Ziel Marker
-        r = 15
-        # Umwandlung von Koordinaten in Pixel Skizze: hier simple Projektion (falls nötig)
-        for idx, point in enumerate([pts[0], pts[-1]]):
-            x, y = point
-            color = start_color if idx == 0 else end_color
-            draw_bg.ellipse([x-r, y-r, x+r, y+r], fill=color)
+    # Karte rendern
+    m = StaticMap(MAP_W, MAP_H, url_template=TILE)
+    m.add_line(Line(pts, color=route_shadow_color, width=14))  # dünnerer Schatten
+    m.add_line(Line(pts, color=route_color, width=6))         # dünnere Hauptlinie
+    m.add_marker(CircleMarker(pts[0], start_color, 30))
+    m.add_marker(CircleMarker(pts[-1], end_color, 30))
+    map_img = m.render(zoom=14)
     st.image(map_img, use_container_width=True)
-    # Footer settings
-    # Dynamische Schriftgröße für Event-Name
+    # Footer dynamic font sizes
     base_size = 160
     max_width = MAP_W - 2 * PAD_HORIZ
     try:
         font_path_bold = "DejaVuSans-Bold.ttf"
         size = base_size
         f_event = ImageFont.truetype(font_path_bold, size)
-        # messe Breite und passe an
         tmp_img = Image.new("RGB", (1,1)); tmp_draw = ImageDraw.Draw(tmp_img)
         ev_text = event_name.upper()
         bbox = tmp_draw.textbbox((0,0), ev_text, font=f_event)
@@ -160,21 +127,19 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
             size -= 2
             f_event = ImageFont.truetype(font_path_bold, size)
             bbox = tmp_draw.textbbox((0,0), ev_text, font=f_event)
-        # feste Größen für Info und Meta
         f_info = ImageFont.truetype("DejaVuSans.ttf", 100)
         f_meta = ImageFont.truetype("DejaVuSans.ttf", 100)
-    except Exception:
+    except:
         f_event = f_info = f_meta = ImageFont.load_default()
-    ev = event_name.upper()
-    top_line = ev
+    top_line = event_name.upper()
     mid_line = city
     date_line = f"{run_date.strftime('%d.%m.%Y')} - {distance}"
     bot_line = f"#{bib_no.strip()} - {runner} - {duration}"
     tmp = Image.new('RGB', (1,1)); dtmp = ImageDraw.Draw(tmp)
     be = dtmp.textbbox((0,0), top_line, font=f_event)
-    bm1= dtmp.textbbox((0,0), mid_line, font=f_info)
-    bm2= dtmp.textbbox((0,0), date_line, font=f_info)
-    bm3= dtmp.textbbox((0,0), bot_line, font=f_meta)
+    bm1 = dtmp.textbbox((0,0), mid_line, font=f_info)
+    bm2 = dtmp.textbbox((0,0), date_line, font=f_info)
+    bm3 = dtmp.textbbox((0,0), bot_line, font=f_meta)
     footer_h = (be[3]-be[1]) + PAD_VERT + (bm1[3]-bm1[1]) + PAD_VERT + 3 + PAD_VERT + (bm2[3]-bm2[1]) + PAD_VERT + (bm3[3]-bm3[1]) + BOTTOM_EXTRA
     poster = Image.new("RGB", (MAP_W, MAP_H + footer_h), footer_bg_color)
     poster.paste(map_img, (0, 0))
