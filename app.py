@@ -130,13 +130,27 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     map_img = m.render(zoom=14)
     st.image(map_img, use_container_width=True)
     # Footer settings
+    # Dynamische Schriftgröße für Event-Name
+    base_size = 160
+    max_width = MAP_W - 2 * PAD_HORIZ
     try:
-        f_event = ImageFont.truetype("DejaVuSans-Bold.ttf", 160)
-        f_info  = ImageFont.truetype("DejaVuSans.ttf", 100)
-        f_meta  = ImageFont.truetype("DejaVuSans.ttf", 100)
-    except:
+        font_path_bold = "DejaVuSans-Bold.ttf"
+        size = base_size
+        f_event = ImageFont.truetype(font_path_bold, size)
+        # messe Breite und passe an
+        tmp_img = Image.new("RGB", (1,1)); tmp_draw = ImageDraw.Draw(tmp_img)
+        ev_text = event_name.upper()
+        bbox = tmp_draw.textbbox((0,0), ev_text, font=f_event)
+        while (bbox[2] - bbox[0] > max_width) and size > 10:
+            size -= 2
+            f_event = ImageFont.truetype(font_path_bold, size)
+            bbox = tmp_draw.textbbox((0,0), ev_text, font=f_event)
+        # feste Größen für Info und Meta
+        f_info = ImageFont.truetype("DejaVuSans.ttf", 100)
+        f_meta = ImageFont.truetype("DejaVuSans.ttf", 100)
+    except Exception:
         f_event = f_info = f_meta = ImageFont.load_default()
-    ev       = event_name.upper()
+    ev = event_name.upper()
     top_line = ev
     mid_line = city
     date_line = f"{run_date.strftime('%d.%m.%Y')} - {distance}"
