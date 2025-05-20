@@ -122,11 +122,12 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     draw.text(((MAP_W-w_d)/2, y), date_str, font=f_info, fill="#333333")
     y += h_d + PAD_VERT
 
-    # Separator
+        # Separator
     draw.line((PAD_HORIZ, y, MAP_W-PAD_HORIZ, y), fill="#CCCCCC", width=3)
-    y += PAD_VERT
+    # Mehr Platz nach Trenner
+    y += PAD_VERT * 2
 
-    # Bottom-Row: Distanz/Stadt links, Bib Mitte, Zeit rechts
+    # Bottom-Row: Distanz/Stadt links, Bib Mitte, Zeit rechts: Distanz/Stadt links, Bib Mitte, Zeit rechts
     # Distanz/Stadt
     w_c, h_c = bc[2]-bc[0], bc[3]-bc[1]
     draw.text((PAD_HORIZ, y), center, font=f_info, fill="#555555")
