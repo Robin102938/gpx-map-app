@@ -140,20 +140,13 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     w_t2, h_t2 = bt2[2]-bt2[0], bt2[3]-bt2[1]
     draw.text(((MAP_W-w_t2)/2, y), trip, font=f_meta, fill="#000000")
 
-    # 7) Download
+        # 7) Download
     buf = io.BytesIO()
     poster.save(buf, format="PNG")
     st.download_button(
-        "📥 Poster herunterladen",
+        label="📥 Poster herunterladen",
         data=buf.getvalue(),
         file_name="running_poster.png",
         mime="image/png",
-        key="download_btn"
-    ), file_name="running_poster.png", mime="image/png")
-    buf = io.BytesIO(); poster.save(buf, format="PNG")
-    st.download_button(
-        "📥 Poster herunterladen",
-        data=buf.getvalue(),
-        file_name="running_poster.png",
-        mime="image/png"
+        key="poster_download"
     )
