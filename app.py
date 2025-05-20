@@ -19,28 +19,49 @@ st.title("🏃‍ GPX-Map Generator – Print-Ready")
 
 # ——— Farbauswahl (Sidebar) ———
 st.sidebar.header("🎨 Farb-Settings")
-# 10 Standardfarben
-preset_colors = [
-    "#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF",
-    "#FFFF00", "#FF00FF", "#00FFFF", "#888888", "#FFA500"
-]
-# Helper for preset or custom
-def choose_color(label, default):
-    choice = st.sidebar.selectbox(f"{label}", preset_colors + ["Custom"], index=preset_colors.index(default) if default in preset_colors else 0)
-    if choice == "Custom":
-        return st.sidebar.color_picker(f"Eigene {label} wählen", default)
-    return choice
+# Preset-Farben mit Swatches
+preset_colors = {
+    "Schwarz": "#000000",
+    "Weiß": "#FFFFFF",
+    "Rot": "#FF0000",
+    "Grün": "#00FF00",
+    "Blau": "#0000FF",
+    "Gelb": "#FFFF00",
+    "Magenta": "#FF00FF",
+    "Cyan": "#00FFFF"
+}
 
-route_color        = choose_color("Streckenfarbe", "#000000")
-route_shadow_color = choose_color("Schattenfarbe \
-der Strecke", "#CCCCCC")
-start_color        = choose_color("Startpunkt-Farbe", "#00b300")
-end_color          = choose_color("Zielpunkt-Farbe", "#e60000")
-footer_bg_color    = choose_color("Footer-Hintergrund", "#FFFFFF")
-footer_text_color  = choose_color("Footer-Haupttext", "#000000")
-footer_meta_color  = choose_color("Footer-Metatext", "#555555")
+def choose_color_swatches(label, default_hex):
+    # Erzeuge Radio-Optionen mit Unicode-Farbquadraten
+    options = []
+    for name, hex in preset_colors.items():
+        square = f"⬛" if hex == "#000000" else (
+                 f"⬜" if hex == "#FFFFFF" else (
+                 f"🟥" if hex == "#FF0000" else (
+                 f"🟩" if hex == "#00FF00" else (
+                 f"🟦" if hex == "#0000FF" else (
+                 f"🟨" if hex == "#FFFF00" else (
+                 f"🟪" if hex == "#FF00FF" else f"🟦"))))))
+        options.append((f"{square} {name}", hex))
+    options.append(("Custom...", None))
+    # Default-Auswahl
+    default_name = next((k for k,v in preset_colors.items() if v==default_hex), None)
+    default_label = f"Custom..." if not default_name else next(label for label,hex in options if hex==default_hex)
+    choice = st.sidebar.radio(label, [opt for opt,_ in options], index=[opt for opt,_ in options].index(default_label))
+    if choice == "Custom...":
+        return st.sidebar.color_picker(f"Eigene {label} wählen", default_hex)
+    # finde hex für gewählten Label
+    return next(hex for lbl,hex in options if lbl==choice)
 
-# ——— Kartenstil (Sidebar) ———
+route_color        = choose_color_swatches("Streckenfarbe", "#000000")
+route_shadow_color = choose_color_swatches("Schattenfarbe der Strecke", "#CCCCCC")
+start_color        = choose_color_swatches("Startpunkt-Farbe", "#00b300")
+end_color          = choose_color_swatches("Zielpunkt-Farbe", "#e60000")
+footer_bg_color    = choose_color_swatches("Footer-Hintergrund", "#FFFFFF")
+footer_text_color  = choose_color_swatches("Footer-Haupttext", "#000000")
+footer_meta_color  = choose_color_swatches("Footer-Metatext", "#555555")
+
+# ——— Kartenstil (Sidebar) ——— (Sidebar) ———
 st.sidebar.header("🗺 Kartenstil")
 map_style = st.sidebar.selectbox(
     "Kartenstil auswählen",
