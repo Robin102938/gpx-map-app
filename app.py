@@ -108,7 +108,7 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
 
     # 6) Poster-Canvas
     poster = Image.new("RGB", (MAP_W, MAP_H + footer_h), "white")
-    poster.paste(map_img, (0,0))
+    poster.paste(map_img, (0, 0))
     draw = ImageDraw.Draw(poster)
 
     y = MAP_H + PAD_VERT
@@ -117,28 +117,32 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     draw.text(((MAP_W-w_e)/2, y), ev, font=f_event, fill="#000000")
     y += h_e + PAD_VERT
 
-    # Datum
-    w_d, h_d = bd[2]-bd[0], bd[3]-bd[1]
-    draw.text(((MAP_W-w_d)/2, y), date_str, font=f_info, fill="#333333")
-    y += h_d + PAD_VERT
+    # Stadt-Name unter Titel
+    w_city, h_city = bc[2]-bc[0], bc[3]-bc[1]
+    draw.text(((MAP_W-w_city)/2, y), city, font=f_info, fill="#333333")
+    y += h_city + PAD_VERT
 
-        # Separator
+    # Separator
     draw.line((PAD_HORIZ, y, MAP_W-PAD_HORIZ, y), fill="#CCCCCC", width=3)
-    # Mehr Platz nach Trenner
     y += PAD_VERT * 2
 
-    # Bottom-Row: Distanz/Stadt links, Bib Mitte, Zeit rechts: Distanz/Stadt links, Bib Mitte, Zeit rechts
-    # Distanz/Stadt
-    w_c, h_c = bc[2]-bc[0], bc[3]-bc[1]
-    draw.text((PAD_HORIZ, y), center, font=f_info, fill="#555555")
-    # Bib
-    w_b = bb[2]-bb[0]
-    draw.text(((MAP_W-w_b)/2, y), bib_str, font=f_meta, fill="#000000")
-    # Zeit
-    w_t = bt[2]-bt[0]
-    draw.text((MAP_W-PAD_HORIZ-w_t, y), time_str, font=f_meta, fill="#555555")
+    # Datum - Distanz
+    date_line = f"{run_date.strftime('%d.%m.%Y')} - {distance}"
+    bd2 = dtmp.textbbox((0,0), date_line, font=f_info)
+    w_d2, h_d2 = bd2[2]-bd2[0], bd2[3]-bd2[1]
+    draw.text(((MAP_W-w_d2)/2, y), date_line, font=f_info, fill="#555555")
+    y += h_d2 + PAD_VERT
+
+    # Bib - Name - Zeit
+    trip = f"#{bib_no.strip()} - {runner} - {duration}"
+    bt2 = dtmp.textbbox((0,0), trip, font=f_meta)
+    w_t2, h_t2 = bt2[2]-bt2[0], bt2[3]-bt2[1]
+    draw.text(((MAP_W-w_t2)/2, y), trip, font=f_meta, fill="#000000")
 
     # 7) Download
+    buf = io.BytesIO()
+    poster.save(buf, format="PNG")
+    st.download_button("📥 Poster herunterladen", data=buf.getvalue(), file_name="running_poster.png", mime="image/png")
     buf = io.BytesIO(); poster.save(buf, format="PNG")
     st.download_button(
         "📥 Poster herunterladen",
