@@ -1,19 +1,23 @@
 import io
-import gpxpy, requests
+import gpxpy
+import requests
+import streamlit as st
 from staticmap import StaticMap, Line
 from PIL import Image, ImageDraw, ImageFont
-import streamlit as st
 
-# OSRM-Public-Endpoint
+# Öffentlicher OSRM-Endpoint
 OSRM_URL = (
     "http://router.project-osrm.org/"
     "match/v1/driving/{coords}"
     "?geometries=geojson&overview=full"
 )
 
+# Maximalpunkte fürs Matching (URL-Limit vermeiden)
+MAX_MATCH_POINTS = 100
+
 st.title("🏃 GPX-Map Generator")
 
-# ——— Eingabe-Form ———
+# Formular
 gpx_file = st.file_uploader("GPX-Datei hochladen", type="gpx")
 runner = st.text_input("Dein Name")
 event = st.text_input("Name des Laufs")
@@ -25,32 +29,31 @@ if st.button("Karte generieren") and gpx_file and runner and event and duration:
     pts = [
         (pt.longitude, pt.latitude)
         for track in gpx.tracks
-        for segment in track.segments
-        for pt in segment.points
+        for seg in track.segments
+        for pt in seg.points
     ]
 
-    # — Sampling: max. 500 Punkte behalten, um URL-Limit zu umgehen
-    MAX_MATCH_POINTS = 500
+    # 2) extrem sampeln, falls zu viele Punkte
     if len(pts) > MAX_MATCH_POINTS:
         step = len(pts) // MAX_MATCH_POINTS + 1
         pts = pts[::step]
 
-    # 2) Map-Matching mit Fehlerbehandlung
+    # 3) Map-Matching versuchen
     coord_str = ";".join(f"{lon},{lat}" for lon, lat in pts)
     try:
-        r = requests.get(OSRM_URL.format(coords=coord_str))
-        r.raise_for_status()
-        matched = r.json()["matchings"][0]["geometry"]["coordinates"]
-    except requests.exceptions.RequestException as e:
-        st.error(f"⚠️ Map-Matching fehlgeschlagen:\n{e}")
-        st.stop()
+        res = requests.get(OSRM_URL.format(coords=coord_str))
+        res.raise_for_status()
+        matched = res.json()["matchings"][0]["geometry"]["coordinates"]
+    except Exception as e:
+        st.warning("⚠️ Map-Matching fehlgeschlagen – verwende Roh-Daten.")
+        matched = pts
 
-    # 3) Karte rendern
+    # 4) Karte rendern
     m = StaticMap(800, 1200)
     m.add_line(Line(matched, width=2))
     img = m.render()
 
-    # 4) Footer-Text zeichnen
+    # 5) Footer-Text darunter zeichnen
     canvas = Image.new("RGB", (img.width, img.height + 80), "white")
     canvas.paste(img, (0, 0))
     draw = ImageDraw.Draw(canvas)
@@ -60,7 +63,7 @@ if st.button("Karte generieren") and gpx_file and runner and event and duration:
         y = img.height + 5 + 25 * i
         draw.text(((canvas.width - w) / 2, y), text, fill="black", font=font)
 
-    # 5) Anzeige & Download
+    # 6) Bild anzeigen und Download anbieten
     bio = io.BytesIO()
     canvas.save(bio, format="PNG")
     st.image(canvas, use_column_width=True)
