@@ -27,6 +27,26 @@ footer_bg_color    = st.sidebar.color_picker("Footer Hintergrund", "#FFFFFF")
 footer_text_color  = st.sidebar.color_picker("Footer Haupttext", "#000000")
 footer_meta_color  = st.sidebar.color_picker("Footer Metatext", "#555555")
 
+# ——— Kartenstil (Sidebar) ———
+st.sidebar.header("🗺 Kartenstil")
+map_style = st.sidebar.selectbox(
+    "Kartenstil auswählen",
+    ["CartoDB Positron (Light)", "CartoDB Dark Matter", "OpenStreetMap Standard", "Stamen Toner Lite", "Custom"]
+)
+if map_style == "CartoDB Positron (Light)":
+    TILE = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+elif map_style == "CartoDB Dark Matter":
+    TILE = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+elif map_style == "OpenStreetMap Standard":
+    TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+elif map_style == "Stamen Toner Lite":
+    TILE = "https://stamen-tiles.a.ssl.fastly.net/toner-lite/{z}/{x}/{y}.png"
+else:
+    custom_tile = st.sidebar.text_input(
+        "Custom Tile URL Template", "https://.../{z}/{x}/{y}.png"
+    )
+    TILE = custom_tile
+
 # ——— Eingaben ———
 gpx_file    = st.file_uploader("GPX-Datei (.gpx) hochladen", type="gpx")
 event_name  = st.text_input("Name des Laufs / Events")
