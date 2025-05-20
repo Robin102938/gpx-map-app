@@ -33,7 +33,7 @@ runner   = st.text_input("Dein Name")
 duration = st.text_input("Zeit (HH:MM:SS)")
 
 if st.button("Poster erzeugen") and gpx_file and event_name and runner and duration:
-    # 1) GPX referenzieren
+    # 1) GPX einlesen
     gpx = gpxpy.parse(gpx_file)
     raw = [
         (pt.longitude, pt.latitude, pt.elevation, pt.time)
@@ -78,6 +78,7 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
         df = ImageDraw.Draw(map_img)
         df.line(pts, fill="black", width=10)
     st.image(map_img, use_container_width=True)
+
     # 5) Footer-Text-Bereich
     try:
         f_event = ImageFont.truetype("DejaVuSans-Bold.ttf", 160)
@@ -97,16 +98,17 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     poster.paste(map_img, (0,0))
     draw = ImageDraw.Draw(poster)
     y = MAP_H + 40
-    draw.line((200,y,MAP_W-200,y), fill="#cccccc", width=3)
+    draw.line((200,y,MAP_W-200,y), fill="#CCCCCC", width=3)
     y += 40
     w_e,h_e = be[2]-be[0], be[3]-be[1]
-    draw.text(((MAP_W-w_e)/2,y), ev, font=f_event, fill="black")
+    draw.text(((MAP_W-w_e)/2,y), ev, font=f_event, fill="#000000")
     y += h_e + 50
     w_i,h_i = bi[2]-bi[0], bi[3]-bi[1]
-    draw.text(((MAP_W-w_i)/2,y), info, font=f_info, fill="gray20")
+    draw.text(((MAP_W-w_i)/2,y), info, font=f_info, fill="#555555")  # dunkles Grau
     y += h_i + 40
     w_m,h_m = bm[2]-bm[0], bm[3]-bm[1]
-    draw.text(((MAP_W-w_m)/2,y), bib, font=f_meta, fill="gray20")
+    draw.text(((MAP_W-w_m)/2,y), bib, font=f_meta, fill="#555555")
+
     # 6) Ausgabe
     buf = io.BytesIO(); poster.save(buf,format="PNG")
     st.download_button("📥 Poster herunterladen", data=buf.getvalue(),
