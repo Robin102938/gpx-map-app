@@ -37,7 +37,7 @@ def choose_color_grid(label, default_hex):
     # default index
     default_key = next((k for k,v in color_swatches.items() if v==default_hex), "⬛")
     idx = options.index(default_key) if default_key in options else 0
-    choice = st.sidebar.radio("", options, index=idx)
+    choice = st.sidebar.radio("", options, index=idx, key=f"radio_{label}")
     if choice == "❓":
         return st.sidebar.color_picker(f"Custom {label}", default_hex)
     return color_swatches[choice]
