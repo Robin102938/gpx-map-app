@@ -8,10 +8,11 @@ from PIL import Image, ImageDraw, ImageFont
 MAX_SPEED_M_S = 10 # >36 km/h filtern
 MIN_DT_S = 1 # mind. 1 s
 MAX_PTS_DISPLAY = 2000 # Sampling-Limit
-MAP_W, MAP_H = 2480, 3508 # A4 @300dpi
-PAD_HORIZ = 200 # horizontaler Seitenrand für Footer
-PAD_VERT = 40 # vertikaler Abstand zwischen Zeilen
-BOTTOM_EXTRA = 80 # extra Unterkante
+# Karte etwas kleiner für mehr Footer
+MAP_W, MAP_H = 2480, 3000 # A4-Breite, reduzierte Höhe
+PAD_HORIZ = 200 # horizontaler Seitenrand
+PAD_VERT = 40 # vertikaler Abstand
+BOTTOM_EXTRA = 200 # zusätzlicher Unterkante-Puffer
 
 st.title("🏃‍ GPX-Map Generator – Print-Ready")
 
@@ -25,7 +26,7 @@ distance_opt = st.selectbox(
 )
 if distance_opt == "Andere…":
     custom_dist = st.text_input("Eigene Distanz (z.B. '15 km')")
-    distance = custom_dist.strip() or distance_opt
+    distance = (custom_dist.strip() or distance_opt)
 else:
     distance = distance_opt
 
@@ -35,7 +36,7 @@ runner = st.text_input("Dein Name")
 duration = st.text_input("Zeit (HH:MM:SS)")
 
 if st.button("Poster erzeugen") and gpx_file and event_name and runner and duration:
-    # 1) GPX-Daten
+    # 1) GPX-Daten einlesen
     gpx = gpxpy.parse(gpx_file)
     raw = [(pt.longitude, pt.latitude, pt.elevation, pt.time)
            for tr in gpx.tracks for seg in tr.segments for pt in seg.points
@@ -44,7 +45,7 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
         st.error("Zu wenige valide GPX-Daten.")
         st.stop()
 
-    # 2) Ausreißer-Filter
+    # 2) Ausreißer filtern (Haversine-Speed)
     def hav(a, b):
         lon1, lat1, lon2, lat2 = map(math.radians, (a[0],a[1],b[0],b[1]))
         dlon, dlat = lon2-lon1, lat2-lat1
@@ -55,7 +56,7 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     for prev, curr in zip(raw, raw[1:]):
         dist = hav(prev, curr)
         dt = (curr[3] - prev[3]).total_seconds()
-        if dt < MIN_DT_S or (dist/dt) > MAX_SPEED_M_S:
+        if dt < MIN_DT_S or (dist / dt) > MAX_SPEED_M_S:
             continue
         clean.append(curr)
     if len(clean) < 2:
@@ -68,31 +69,28 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
         step = len(pts) // MAX_PTS_DISPLAY + 1
         pts = pts[::step]
 
-    # 4) Karte rendern
+    # 4) Karte rendern (leicht gezoomt)
     TILE = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
     m = StaticMap(MAP_W, MAP_H, url_template=TILE)
     m.add_line(Line(pts, color="#CCCCCC", width=18))
     m.add_line(Line(pts, color="#000000", width=10))
     m.add_marker(CircleMarker(pts[0], "#00b300", 30))
     m.add_marker(CircleMarker(pts[-1], "#e60000", 30))
-    try:
-        map_img = m.render(zoom=None)
-    except:
-        map_img = Image.new("RGB", (MAP_W, MAP_H), "white")
-        df = ImageDraw.Draw(map_img)
-        df.line(pts, fill="black", width=10)
+    # Fixer Zoom-Level für etwas nähere Ansicht
+    map_img = m.render(zoom=14)
     st.image(map_img, use_container_width=True)
 
-    # 5) Footer vorbereiten
+    # 5) Footer-Bereich berechnen
     try:
         f_event = ImageFont.truetype("DejaVuSans-Bold.ttf", 160)
         f_info = ImageFont.truetype("DejaVuSans.ttf", 100)
         f_meta = ImageFont.truetype("DejaVuSans.ttf", 100)
     except:
         f_event = f_info = f_meta = ImageFont.load_default()
+
     ev = event_name.upper()
     date_str = run_date.strftime('%d %B %Y')
-    center_str = f"{distance} – {city}"
+    center = f"{distance} – {city}"
     bib_str = f"#{bib_no.strip()} {runner}"
     time_str = duration
 
@@ -100,45 +98,50 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     dtmp = ImageDraw.Draw(tmp)
     be = dtmp.textbbox((0,0), ev, font=f_event)
     bd = dtmp.textbbox((0,0), date_str, font=f_info)
-    bc = dtmp.textbbox((0,0), center_str, font=f_info)
+    bc = dtmp.textbbox((0,0), center, font=f_info)
     bb = dtmp.textbbox((0,0), bib_str, font=f_meta)
     bt = dtmp.textbbox((0,0), time_str, font=f_meta)
 
-    # Footer-Höhe berechnen
-    footer_h = (be[3]-be[1]) + PAD_VERT + (bd[3]-bd[1]) + PAD_VERT + 3 + PAD_VERT + max((bb[3]-bb[1]),(bt[3]-bt[1])) + BOTTOM_EXTRA
+    # Gesamt-Footer-Höhe
+    footer_h = (be[3]-be[1]) + PAD_VERT + (bd[3]-bd[1]) + PAD_VERT + 3 + PAD_VERT + \
+               max(bc[3]-bc[1], bb[3]-bb[1], bt[3]-bt[1]) + BOTTOM_EXTRA
 
     # 6) Poster-Canvas
     poster = Image.new("RGB", (MAP_W, MAP_H + footer_h), "white")
     poster.paste(map_img, (0,0))
     draw = ImageDraw.Draw(poster)
-    y = MAP_H + PAD_VERT
 
+    y = MAP_H + PAD_VERT
     # Event-Name
-    w_e = be[2]-be[0]; h_e = be[3]-be[1]
+    w_e, h_e = be[2]-be[0], be[3]-be[1]
     draw.text(((MAP_W-w_e)/2, y), ev, font=f_event, fill="#000000")
     y += h_e + PAD_VERT
 
-    # Datum-Row
-    w_d = bd[2]-bd[0]; h_d = bd[3]-bd[1]
+    # Datum
+    w_d, h_d = bd[2]-bd[0], bd[3]-bd[1]
     draw.text(((MAP_W-w_d)/2, y), date_str, font=f_info, fill="#333333")
     y += h_d + PAD_VERT
 
-    # Trennstrich
-    x0, x1 = PAD_HORIZ, MAP_W-PAD_HORIZ
-    draw.line((x0, y, x1, y), fill="#CCCCCC", width=3)
+    # Separator
+    draw.line((PAD_HORIZ, y, MAP_W-PAD_HORIZ, y), fill="#CCCCCC", width=3)
     y += PAD_VERT
 
-    # Bottom-Row: distance-city left, bib_center, time right
-    # left center_str
-    w_c = bc[2]-bc[0]; h_c = bc[3]-bc[1]
-    draw.text((PAD_HORIZ, y), center_str, font=f_info, fill="#555555")
-    # center bib
-    w_b = bb[2]-bb[0];
+    # Bottom-Row: Distanz/Stadt links, Bib Mitte, Zeit rechts
+    # Distanz/Stadt
+    w_c, h_c = bc[2]-bc[0], bc[3]-bc[1]
+    draw.text((PAD_HORIZ, y), center, font=f_info, fill="#555555")
+    # Bib
+    w_b = bb[2]-bb[0]
     draw.text(((MAP_W-w_b)/2, y), bib_str, font=f_meta, fill="#000000")
-    # right time
-    w_t = bt[2]-bt[0];
+    # Zeit
+    w_t = bt[2]-bt[0]
     draw.text((MAP_W-PAD_HORIZ-w_t, y), time_str, font=f_meta, fill="#555555")
 
     # 7) Download
     buf = io.BytesIO(); poster.save(buf, format="PNG")
-    st.download_button("📥 Poster herunterladen", data=buf.getvalue(), file_name="running_poster.png", mime="image/png")
+    st.download_button(
+        "📥 Poster herunterladen",
+        data=buf.getvalue(),
+        file_name="running_poster.png",
+        mime="image/png"
+    )
