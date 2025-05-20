@@ -17,7 +17,7 @@ MAX_MATCH_POINTS = 100
 
 st.title("🏃 GPX-Map Generator")
 
-# Formular
+# Formularfelder
 gpx_file = st.file_uploader("GPX-Datei hochladen", type="gpx")
 runner    = st.text_input("Dein Name")
 event     = st.text_input("Name des Laufs")
@@ -59,7 +59,9 @@ if st.button("Karte generieren") and gpx_file and runner and event and duration:
     draw = ImageDraw.Draw(canvas)
     font = ImageFont.load_default()
     for i, text in enumerate([event, runner, duration]):
-        w, h = font.getsize(text)
+        # Text-Bounding-Box ermitteln
+        bbox = draw.textbbox((0, 0), text, font=font)
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
         y = img.height + 5 + 25 * i
         draw.text(
             ((canvas.width - w) / 2, y),
