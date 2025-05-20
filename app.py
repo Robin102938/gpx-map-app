@@ -17,7 +17,7 @@ MAX_MATCH_POINTS = 100
 
 st.title("🏃 GPX-Map Generator")
 
-# Formular
+# Formularfelder
 gpx_file = st.file_uploader("GPX-Datei hochladen", type="gpx")
 runner = st.text_input("Dein Name")
 event = st.text_input("Name des Laufs")
@@ -33,27 +33,28 @@ if st.button("Karte generieren") and gpx_file and runner and event and duration:
         for pt in seg.points
     ]
 
-    # 2) extrem sampeln, falls zu viele Punkte
+    # 2) Sampling auf MAX_MATCH_POINTS
     if len(pts) > MAX_MATCH_POINTS:
         step = len(pts) // MAX_MATCH_POINTS + 1
         pts = pts[::step]
 
-    # 3) Map-Matching versuchen
+    # 3) Map-Matching
     coord_str = ";".join(f"{lon},{lat}" for lon, lat in pts)
     try:
         res = requests.get(OSRM_URL.format(coords=coord_str))
         res.raise_for_status()
         matched = res.json()["matchings"][0]["geometry"]["coordinates"]
-    except Exception as e:
+    except Exception:
         st.warning("⚠️ Map-Matching fehlgeschlagen – verwende Roh-Daten.")
         matched = pts
 
     # 4) Karte rendern
     m = StaticMap(800, 1200)
-    m.add_line(Line(matched, width=2))
+    # HIER: Farbe explizit angeben!
+    m.add_line(Line(matched, color="black", width=2))
     img = m.render()
 
-    # 5) Footer-Text darunter zeichnen
+    # 5) Footer-Text zeichnen
     canvas = Image.new("RGB", (img.width, img.height + 80), "white")
     canvas.paste(img, (0, 0))
     draw = ImageDraw.Draw(canvas)
@@ -63,7 +64,7 @@ if st.button("Karte generieren") and gpx_file and runner and event and duration:
         y = img.height + 5 + 25 * i
         draw.text(((canvas.width - w) / 2, y), text, fill="black", font=font)
 
-    # 6) Bild anzeigen und Download anbieten
+    # 6) Bild anzeigen & Download
     bio = io.BytesIO()
     canvas.save(bio, format="PNG")
     st.image(canvas, use_column_width=True)
