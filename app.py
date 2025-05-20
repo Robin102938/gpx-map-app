@@ -9,7 +9,7 @@ MAX_SPEED_M_S = 10 # >36 km/h filtern
 MIN_DT_S = 1 # mind. 1 s
 MAX_PTS_DISPLAY = 2000 # Sampling-Limit
 MAP_W, MAP_H = 2480, 3508 # A4 @300dpi
-FOOTER_EXTRA = 40 # zusätzliche Unterkante
+FOOTER_PAD = 60 # Unterer Zusatzabstand
 
 st.title("🏃‍ GPX-Map Generator – Print-Ready")
 
@@ -22,8 +22,8 @@ distance_opt = st.selectbox(
     ["5 km", "10 km", "21,0975 km", "42,195 km", "Andere…"]
 )
 if distance_opt == "Andere…":
-    custom_dist = st.text_input("Eigene Distanz (inkl. Einheit, z.B. '15 km')")
-    distance = custom_dist.strip()
+    custom_dist = st.text_input("Eigene Distanz (z.B. '15 km')")
+    distance = custom_dist.strip() or distance_opt
 else:
     distance = distance_opt
 
@@ -33,7 +33,7 @@ runner = st.text_input("Dein Name")
 duration = st.text_input("Zeit (HH:MM:SS)")
 
 if st.button("Poster erzeugen") and gpx_file and event_name and runner and duration:
-    # 1) GPX einlesen und filtern
+    # 1) GPX einlesen
     gpx = gpxpy.parse(gpx_file)
     raw = [
         (pt.longitude, pt.latitude, pt.elevation, pt.time)
@@ -43,26 +43,26 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     if len(raw) < 2:
         st.error("Zu wenige valide GPX-Daten.")
         st.stop()
-    # 2) Ausreißer per Speed
+    # 2) Ausreißer-Filter
     def hav(a, b):
         lon1,lat1,lon2,lat2 = map(math.radians,(a[0],a[1],b[0],b[1]))
         dlon, dlat = lon2-lon1, lat2-lat1
         h = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
         return 2*6371000*math.asin(math.sqrt(h))
     clean = [raw[0]]
-    for p, c in zip(raw, raw[1:]):
-        dist = hav(p, c)
-        dt = (c[3] - p[3]).total_seconds()
-        if dt < MIN_DT_S or (dist/dt) > MAX_SPEED_M_S:
+    for p,c in zip(raw, raw[1:]):
+        dist = hav(p,c)
+        dt = (c[3]-p[3]).total_seconds()
+        if dtMAX_SPEED_M_S:
             continue
         clean.append(c)
-    if len(clean) < 2:
+    if len(clean)<2:
         st.error("Kein gültiger Track nach Filter.")
         st.stop()
     # 3) Sampling
-    pts = [(lon, lat) for lon, lat, _, _ in clean]
-    if len(pts) > MAX_PTS_DISPLAY:
-        step = len(pts) // MAX_PTS_DISPLAY + 1
+    pts = [(lon,lat) for lon,lat,_,_ in clean]
+    if len(pts)>MAX_PTS_DISPLAY:
+        step = len(pts)//MAX_PTS_DISPLAY+1
         pts = pts[::step]
     # 4) Karte rendern
     TILE = "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
@@ -77,42 +77,46 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
         map_img = Image.new("RGB", (MAP_W, MAP_H), "white")
         df = ImageDraw.Draw(map_img)
         df.line(pts, fill="black", width=10)
-    # 5) Footer-Text berechnen
+    st.image(map_img, use_container_width=True)
+
+    # 5) Footer-Text-Bereich
+    # Dynamische Höhenberechnung
     try:
-        f_big = ImageFont.truetype("DejaVuSans-Bold.ttf", 140)
-        f_small = ImageFont.truetype("DejaVuSans.ttf", 80)
+        f_event = ImageFont.truetype("DejaVuSans-Bold.ttf", 160)
+        f_info = ImageFont.truetype("DejaVuSans.ttf", 100)
+        f_meta = ImageFont.truetype("DejaVuSans.ttf", 100)
     except:
-        f_big = f_small = ImageFont.load_default()
+        f_event = f_info = f_meta = ImageFont.load_default()
     ev = event_name.upper()
     info = f"{run_date.strftime('%d %B %Y')} – {distance} – {city}"
     bib = f"#{bib_no.strip()} {runner} – {duration}"
-    d = ImageDraw.Draw(Image.new('RGB',(1,1)))
-    bbox_ev = d.textbbox((0,0), ev, font=f_big)
-    bbox_info = d.textbbox((0,0), info, font=f_small)
-    bbox_bib = d.textbbox((0,0), bib, font=f_small)
-    h_total = (bbox_ev[3]-bbox_ev[1]) + (bbox_info[3]-bbox_info[1]) + \
-              (bbox_bib[3]-bbox_bib[1]) + 80 + FOOTER_EXTRA
-    # 6) Poster erstellen
-    poster = Image.new("RGB", (MAP_W, MAP_H + h_total), "white")
+    draw_tmp = ImageDraw.Draw(Image.new('RGB',(1,1)))
+    be = draw_tmp.textbbox((0,0), ev, font=f_event)
+    bi = draw_tmp.textbbox((0,0), info, font=f_info)
+    bm = draw_tmp.textbbox((0,0), bib, font=f_meta)
+    footer_h = (be[3]-be[1]) + (bi[3]-bi[1]) + (bm[3]-bm[1]) + FOOTER_PAD
+    # Poster zusammensetzen
+    poster = Image.new("RGB", (MAP_W, MAP_H+footer_h), "white")
     poster.paste(map_img, (0,0))
     draw = ImageDraw.Draw(poster)
-    y = MAP_H + 20
-    draw.line((200, y, MAP_W-200, y), fill="#cccccc", width=3)
-    y += 30
+    y = MAP_H + 40
     # Event
-    w_ev = bbox_ev[2]-bbox_ev[0]; h_ev = bbox_ev[3]-bbox_ev[1]
-    draw.text(((MAP_W-w_ev)/2, y), ev, fill="black", font=f_big)
-    y += h_ev + 20
+    w_e = be[2]-be[0]; h_e = be[3]-be[1]
+    draw.text(((MAP_W-w_e)/2, y), ev, font=f_event, fill="black")
+    y += h_e + 40
     # Info
-    w_i = bbox_info[2]-bbox_info[0]; h_i = bbox_info[3]-bbox_info[1]
-    draw.text(((MAP_W-w_i)/2, y), info, fill="black", font=f_small)
-    y += h_i + 15
+    w_i = bi[2]-bi[0]; h_i = bi[3]-bi[1]
+    draw.text(((MAP_W-w_i)/2, y), info, font=f_info, fill="gray20")
+    y += h_i + 30
     # Bib
-    w_b = bbox_bib[2]-bbox_bib[0]; h_b = bbox_bib[3]-bbox_bib[1]
-    draw.text(((MAP_W-w_b)/2, y), bib, fill="black", font=f_small)
-    # 7) Ausgabe
-    buf = io.BytesIO(); poster.save(buf, format="PNG")
+    w_m = bm[2]-bm[0]; h_m = bm[3]-bm[1]
+    draw.text(((MAP_W-w_m)/2, y), bib, font=f_meta, fill="gray20")
+
+    # 6) Ausgabe
+    buf = io.BytesIO(); poster.save(buf,format="PNG")
     st.image(poster, use_container_width=True)
-    st.download_button("📥 Hochauflösendes Poster herunterladen",
+    st.download_button(
+        "📥 Hochauflösendes Poster herunterladen",
         data=buf.getvalue(), file_name="running_poster.png",
-        mime="image/png")
+        mime="image/png"
+    )
