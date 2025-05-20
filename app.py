@@ -12,7 +12,7 @@ MAX_PTS_DISPLAY = 2000 # Sampling-Limit
 MAP_W, MAP_H = 2480, 3000 # A4-Breite, reduzierte Höhe
 PAD_HORIZ = 200 # horizontaler Seitenrand
 PAD_VERT = 40 # vertikaler Abstand
-BOTTOM_EXTRA = 200 # zusätzlicher Unterkante-Puffer
+BOTTOM_EXTRA = 300 # zusätzlicher Unterkante-Puffer für Footer mehr Platz # zusätzlicher Unterkante-Puffer
 
 st.title("🏃‍ GPX-Map Generator – Print-Ready")
 
@@ -118,7 +118,8 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     y += h_e + PAD_VERT
 
     # Stadt-Name unter Titel
-    w_city, h_city = bc[2]-bc[0], bc[3]-bc[1]
+    bcity = dtmp.textbbox((0,0), city, font=f_info)
+    w_city, h_city = bcity[2]-bcity[0], bcity[3]-bcity[1]
     draw.text(((MAP_W-w_city)/2, y), city, font=f_info, fill="#333333")
     y += h_city + PAD_VERT
 
@@ -142,7 +143,13 @@ if st.button("Poster erzeugen") and gpx_file and event_name and runner and durat
     # 7) Download
     buf = io.BytesIO()
     poster.save(buf, format="PNG")
-    st.download_button("📥 Poster herunterladen", data=buf.getvalue(), file_name="running_poster.png", mime="image/png")
+    st.download_button(
+        "📥 Poster herunterladen",
+        data=buf.getvalue(),
+        file_name="running_poster.png",
+        mime="image/png",
+        key="download_btn"
+    ), file_name="running_poster.png", mime="image/png")
     buf = io.BytesIO(); poster.save(buf, format="PNG")
     st.download_button(
         "📥 Poster herunterladen",
